@@ -7,12 +7,16 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type model struct {
 	steps    []Step
+	ready    bool
 	quitting bool
+	viewport viewport.Model
+	content  string
 }
 
 func initialModel() model {
@@ -42,7 +46,37 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+	var cmd tea.Cmd
+	steps := m.steps
+	m.steps = []Step{}
+	var content strings.Builder
+	var skip bool
+	for _, s := range steps {
+		s, cmd := s.Update(msg)
+		m.steps = append(m.steps, s)
+		cmds = append(cmds, cmd)
+		if skip {
+			s.state = Skipped
+		}
+		content.WriteString(s.View())
+		if s.state == Exited1 {
+			skip = true
+		}
+	}
+	m.content = content.String()
+	m.viewport.SetContent(m.content)
+	m.viewport, cmd = m.viewport.Update(msg)
+	cmds = append(cmds, cmd)
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		if !m.ready {
+			m.viewport = viewport.New(msg.Width, msg.Height)
+			m.viewport.SetContent(m.content)
+			m.ready = true
+		} else {
+			m.viewport.Width = msg.Width
+			m.viewport.Height = msg.Height
+		}
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
@@ -62,38 +96,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := func() tea.Msg { return startMsg{id: msg.id + 1} }
 		cmds = append(cmds, cmd)
 	}
-	steps := m.steps
-	m.steps = []Step{}
-	for _, s := range steps {
-		s, cmd := s.Update(msg)
-		m.steps = append(m.steps, s)
-		cmds = append(cmds, cmd)
-	}
+
 	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
-	var content strings.Builder
-	var skip bool
-	for _, s := range m.steps {
-		if skip {
-			s.state = Skipped
-		}
-		content.WriteString(s.View())
-		if s.state == Exited1 {
-			skip = true
-		}
-	}
-
-	str := content.String()
-	if m.quitting {
-		return str + "\n"
-	}
-	return str
+	return m.viewport.View()
 }
 
 func main() {
-	p := tea.NewProgram(initialModel())
+	p := tea.NewProgram(
+		initialModel(),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
 	if len(os.Getenv("DEBUG")) > 0 {
 		f, err := tea.LogToFile("debug.log", "debug")
 		f.Truncate(0)
