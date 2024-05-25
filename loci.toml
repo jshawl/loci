@@ -1,5 +1,5 @@
 steps = [
-    "go mod tidy",
+    "sleep 3",
     "sleep 2",
     "go test -v ./...",
     "go build"

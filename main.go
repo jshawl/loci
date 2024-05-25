@@ -15,24 +15,6 @@ type model struct {
 	quitting bool
 }
 
-// for _, step := range steps {
-// 	fmt.Print("running ", step.command, " ")
-// 	step, err := step.run()
-// 	var content strings.Builder
-// 	if step.ok {
-// 		content.WriteString("✅ ")
-// 	} else {
-// 		content.WriteString("❌ ")
-// 	}
-// 	content.WriteString(step.duration.String())
-// 	content.WriteString("\n")
-// 	fmt.Print(content.String())
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		break
-// 	}
-// }
-
 func initialModel() model {
 	type Config map[string][]string
 	dat, _ := os.ReadFile("./loci.toml")
@@ -72,12 +54,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case exitMsg:
 		log.Println("received an exitMsg in main.go", msg)
+		// cmd := func() tea.Msg { return startMsg{id: msg.id + 1} }
+		// return m, nil
 	}
 	var cmds []tea.Cmd
 	steps := m.steps
 	m.steps = []Step{}
 	for _, s := range steps {
-		// run msg will go through here
 		s, cmd := s.Update(msg)
 		m.steps = append(m.steps, s)
 		cmds = append(cmds, cmd)

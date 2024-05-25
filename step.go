@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os/exec"
@@ -18,8 +17,10 @@ type startMsg struct {
 }
 
 type exitMsg struct {
-	id    int
-	state StepState
+	id       int
+	state    StepState
+	output   string
+	duration time.Duration
 }
 
 type StepState string
@@ -32,11 +33,12 @@ const (
 )
 
 type Step struct {
-	id       int
-	command  string
-	spinner  spinner.Model
-	duration time.Duration
-	state    StepState
+	id        int
+	command   string
+	spinner   spinner.Model
+	startedAt time.Time
+	duration  time.Duration
+	state     StepState
 }
 
 func newStep(command string, id int) Step {
@@ -51,31 +53,31 @@ func newStep(command string, id int) Step {
 	}
 }
 
-func (step Step) run() (Step, error) {
-	start := time.Now()
-	command := strings.Split(step.command, " ")
-	cmd := exec.Command(command[0], command[1:]...)
-	output, err := cmd.Output()
-	step.duration = time.Since(start).Round(time.Millisecond)
-	if err != nil {
-		step.state = Exited1
-		return step, errors.New(string(output))
-	}
-	step.state = Exited0
-	return step, nil
-}
-
 func (m Step) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
 func (m Step) start() (Step, tea.Cmd) {
-	log.Println("starting...")
+	log.Println("starting...", m.command)
 	m.state = Started
+	m.startedAt = time.Now()
 	return m, func() tea.Msg {
-		// i/o
-		time.Sleep(time.Second)
-		return exitMsg{id: m.id, state: Exited1}
+		start := time.Now()
+		command := strings.Split(m.command, " ")
+		cmd := exec.Command(command[0], command[1:]...)
+		output, err := cmd.Output()
+		m.duration = time.Since(start).Round(time.Millisecond)
+		if err != nil {
+			m.state = Exited1
+		} else {
+			m.state = Exited0
+		}
+		return exitMsg{
+			id:       m.id,
+			state:    m.state,
+			output:   string(output),
+			duration: m.duration,
+		}
 	}
 }
 
@@ -83,25 +85,20 @@ func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 	switch msg := msg.(type) {
 	case startMsg:
 		if m.id == msg.id {
-			log.Println("received a startMsg in step.go", msg)
 			m, cmd := m.start()
 			return m, cmd
 		}
 	case exitMsg:
 		if m.id == msg.id {
-			// m.ok = true
 			m.state = msg.state
-			log.Println("received an exitMsg in step.go", msg)
+			m.duration = msg.duration
 		}
 	}
-	// log.Println("step.Update", msg)
-	// receive run message
-	// -> append exitmsg after run to cmd
-	// case startMsg:
-	// startMsg.id == m.id
-	// m, cmd := m.start()
 	var cmd tea.Cmd
 	m.spinner, cmd = m.spinner.Update(msg)
+	if m.state == Started {
+		m.duration = time.Since(m.startedAt).Round(time.Millisecond)
+	}
 	return m, cmd
 }
 
@@ -121,5 +118,8 @@ func (m Step) View() string {
 	if m.state == Exited1 {
 		icon = string(Exited1)
 	}
-	return fmt.Sprintf("%s %s\n", icon, m.command)
+	if m.state != Pending {
+		return fmt.Sprintf("%s %s %s\n", icon, m.command, m.duration)
+	}
+	return fmt.Sprintf("%s %s \n", icon, m.command)
 }
