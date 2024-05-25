@@ -1,6 +1,6 @@
 steps = [
-    "sleep 3",
-    "sleep 2",
+    "sleep 1",
+    "sleep 1",
     "go test -v ./...",
     "go build"
 ]

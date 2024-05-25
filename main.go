@@ -43,6 +43,8 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -54,10 +56,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case exitMsg:
 		log.Println("received an exitMsg in main.go", msg)
-		// cmd := func() tea.Msg { return startMsg{id: msg.id + 1} }
-		// return m, nil
+		cmd := func() tea.Msg { return startMsg{id: msg.id + 1} }
+		cmds = append(cmds, cmd)
 	}
-	var cmds []tea.Cmd
 	steps := m.steps
 	m.steps = []Step{}
 	for _, s := range steps {
@@ -70,12 +71,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	var content strings.Builder
+	var skip bool
 	for _, s := range m.steps {
+		if skip {
+			s.state = Skipped
+		}
 		content.WriteString(s.View())
 		if s.state == Exited1 {
-			break
+			skip = true
 		}
 	}
+
 	str := content.String()
 	if m.quitting {
 		return str + "\n"

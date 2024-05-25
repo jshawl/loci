@@ -30,6 +30,7 @@ const (
 	Started StepState = ""
 	Exited0 StepState = "✅"
 	Exited1 StepState = "❌"
+	Skipped StepState = "⏭️"
 )
 
 type Step struct {
@@ -39,6 +40,7 @@ type Step struct {
 	startedAt time.Time
 	duration  time.Duration
 	state     StepState
+	output    string
 }
 
 func newStep(command string, id int) Step {
@@ -92,6 +94,7 @@ func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 		if m.id == msg.id {
 			m.state = msg.state
 			m.duration = msg.duration
+			m.output = msg.output
 		}
 	}
 	var cmd tea.Cmd
@@ -117,6 +120,11 @@ func (m Step) View() string {
 	}
 	if m.state == Exited1 {
 		icon = string(Exited1)
+		return fmt.Sprintf("%s %s %s\n %s", icon, m.command, m.duration, m.output)
+	}
+	if m.state == Skipped {
+		icon = string(Skipped)
+		return fmt.Sprintf("%s  %s \n", icon, m.command)
 	}
 	if m.state != Pending {
 		return fmt.Sprintf("%s %s %s\n", icon, m.command, m.duration)
