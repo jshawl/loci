@@ -19,7 +19,6 @@ type model struct {
 	quitting bool
 	viewport viewport.Model
 	content  string
-	duration time.Duration
 }
 
 func initialModel() model {
