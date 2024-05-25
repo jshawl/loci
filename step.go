@@ -84,6 +84,7 @@ func (m Step) start() (Step, tea.Cmd) {
 }
 
 func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case startMsg:
 		if m.id == msg.id {
@@ -96,9 +97,12 @@ func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 			m.duration = msg.duration
 			m.output = msg.output
 		}
+	case spinner.TickMsg:
+		if m.state == Started || m.state == Pending {
+			m.spinner, cmd = m.spinner.Update(msg)
+		}
+		return m, cmd
 	}
-	var cmd tea.Cmd
-	m.spinner, cmd = m.spinner.Update(msg)
 	if m.state == Started {
 		m.duration = time.Since(m.startedAt).Round(time.Millisecond)
 	}
@@ -106,9 +110,7 @@ func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 }
 
 func (m Step) View() string {
-
 	var icon string
-
 	if m.state == Pending {
 		icon = string(Pending)
 	}
@@ -124,7 +126,7 @@ func (m Step) View() string {
 	}
 	if m.state == Skipped {
 		icon = string(Skipped)
-		return fmt.Sprintf("%s  %s \n", icon, m.command)
+		return fmt.Sprintf("%s  %s (skipped)\n", icon, m.command)
 	}
 	if m.state != Pending {
 		return fmt.Sprintf("%s %s %s\n", icon, m.command, m.duration)

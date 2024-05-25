@@ -35,16 +35,13 @@ func (m model) Init() tea.Cmd {
 	for _, s := range m.steps {
 		cmds = append(cmds, s.Init())
 	}
-
 	cmd := func() tea.Msg { return startMsg{id: 0} }
-
 	cmds = append(cmds, cmd)
 	return tea.Batch(cmds...)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
