@@ -48,6 +48,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc", "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
+		case "r":
+			steps := m.steps
+			for i := range steps {
+				m.steps[i].state = Pending
+			}
+			return m, func() tea.Msg { return startMsg{id: 0} }
 		default:
 			return m, nil
 		}

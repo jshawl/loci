@@ -1,7 +1,10 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestSomething(t *testing.T) {
-	t.Fatalf("yikes!")
+	t.Fatalf(strings.Repeat("yikes!\n", 100))
 }

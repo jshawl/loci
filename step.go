@@ -85,11 +85,16 @@ func (m Step) start() (Step, tea.Cmd) {
 
 func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
+	if m.state == Started {
+		m.duration = time.Since(m.startedAt).Round(time.Millisecond)
+	}
 	switch msg := msg.(type) {
 	case startMsg:
 		if m.id == msg.id {
 			m, cmd := m.start()
-			return m, cmd
+			cmds = append(cmds, cmd, m.spinner.Tick)
+			return m, tea.Batch(cmds...)
 		}
 	case exitMsg:
 		if m.id == msg.id {
@@ -102,9 +107,6 @@ func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 			m.spinner, cmd = m.spinner.Update(msg)
 		}
 		return m, cmd
-	}
-	if m.state == Started {
-		m.duration = time.Since(m.startedAt).Round(time.Millisecond)
 	}
 	return m, cmd
 }
