@@ -24,7 +24,7 @@ type model struct {
 func initialModel() model {
 	type Config map[string][]string
 
-	var ( //nolint:prealloc
+	var ( //nodlint:prealloc
 		conf  Config
 		steps []Step
 	)
