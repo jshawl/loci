@@ -13,17 +13,30 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// sent by a step
-type exitMsg struct {
+type startMsg struct {
 	id int
 }
+
+type exitMsg struct {
+	id    int
+	state StepState
+}
+
+type StepState string
+
+const (
+	Pending StepState = "🔜"
+	Started StepState = ""
+	Exited0 StepState = "✅"
+	Exited1 StepState = "❌"
+)
 
 type Step struct {
 	id       int
 	command  string
 	spinner  spinner.Model
 	duration time.Duration
-	ok       bool
+	state    StepState
 }
 
 func newStep(command string, id int) Step {
@@ -34,6 +47,7 @@ func newStep(command string, id int) Step {
 		command: command,
 		spinner: s,
 		id:      id,
+		state:   Pending,
 	}
 }
 
@@ -44,10 +58,10 @@ func (step Step) run() (Step, error) {
 	output, err := cmd.Output()
 	step.duration = time.Since(start).Round(time.Millisecond)
 	if err != nil {
-		step.ok = false
+		step.state = Exited1
 		return step, errors.New(string(output))
 	}
-	step.ok = true
+	step.state = Exited0
 	return step, nil
 }
 
@@ -55,20 +69,28 @@ func (m Step) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
-func (m Step) start() tea.Cmd {
+func (m Step) start() (Step, tea.Cmd) {
 	log.Println("starting...")
-	return func() tea.Msg {
+	m.state = Started
+	return m, func() tea.Msg {
 		// i/o
 		time.Sleep(time.Second)
-		return exitMsg{id: m.id}
+		return exitMsg{id: m.id, state: Exited1}
 	}
 }
 
 func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 	switch msg := msg.(type) {
+	case startMsg:
+		if m.id == msg.id {
+			log.Println("received a startMsg in step.go", msg)
+			m, cmd := m.start()
+			return m, cmd
+		}
 	case exitMsg:
 		if m.id == msg.id {
-			m.ok = true
+			// m.ok = true
+			m.state = msg.state
 			log.Println("received an exitMsg in step.go", msg)
 		}
 	}
@@ -84,9 +106,20 @@ func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 }
 
 func (m Step) View() string {
-	if m.ok {
-		return "ok\n"
-	} else {
-		return fmt.Sprintf("%s %s\n", m.spinner.View(), m.command)
+
+	var icon string
+
+	if m.state == Pending {
+		icon = string(Pending)
 	}
+	if m.state == Started {
+		icon = fmt.Sprintf("%s ", m.spinner.View())
+	}
+	if m.state == Exited0 {
+		icon = string(Exited0)
+	}
+	if m.state == Exited1 {
+		icon = string(Exited1)
+	}
+	return fmt.Sprintf("%s %s\n", icon, m.command)
 }

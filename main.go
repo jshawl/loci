@@ -53,7 +53,10 @@ func (m model) Init() tea.Cmd {
 	for _, s := range m.steps {
 		cmds = append(cmds, s.Init())
 	}
-	cmds = append(cmds, m.steps[0].start())
+
+	cmd := func() tea.Msg { return startMsg{id: 0} }
+
+	cmds = append(cmds, cmd)
 	return tea.Batch(cmds...)
 }
 
@@ -86,6 +89,9 @@ func (m model) View() string {
 	var content strings.Builder
 	for _, s := range m.steps {
 		content.WriteString(s.View())
+		if s.state == Exited1 {
+			break
+		}
 	}
 	str := content.String()
 	if m.quitting {
