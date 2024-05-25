@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
 	"time"
@@ -43,7 +42,7 @@ type Step struct {
 	state     StepState
 }
 
-func newStep(command string, index int) Step {
+func initialStep(command string, index int) Step {
 	stepSpinner := spinner.New()
 	stepSpinner.Spinner = spinner.Line
 	stepSpinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
@@ -64,7 +63,6 @@ func (m Step) Init() tea.Cmd {
 }
 
 func (m Step) start() (Step, tea.Cmd) {
-	log.Println("starting...", m.command)
 	m.state = Started
 	m.startedAt = time.Now()
 

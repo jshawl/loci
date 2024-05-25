@@ -3,6 +3,5 @@ steps = [
     "golangci-lint run ./...",
     "go clean -testcache",
     "go test -v ./...",
-    "sleep 5",
     "go build"
 ]
