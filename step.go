@@ -124,7 +124,11 @@ func (m Step) View() string {
 	}
 	if m.state == Exited1 {
 		icon = string(Exited1)
-		return fmt.Sprintf("%s %s %s\n %s", icon, m.command, m.duration, m.output)
+		style := lipgloss.NewStyle().
+			Border(lipgloss.HiddenBorder(), false, false, false, true).
+			BorderBackground(lipgloss.Color("#FF0000")).
+			Padding(0, 0, 0, 1)
+		return fmt.Sprintf("%s %s %s\n%s\n", icon, m.command, m.duration, style.Render(m.output))
 	}
 	if m.state == Skipped {
 		icon = string(Skipped)

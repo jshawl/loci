@@ -5,10 +5,12 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
@@ -17,6 +19,7 @@ type model struct {
 	quitting bool
 	viewport viewport.Model
 	content  string
+	duration time.Duration
 }
 
 func initialModel() model {
@@ -51,6 +54,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.steps = []Step{}
 	var content strings.Builder
 	var skip bool
+	var total time.Duration
+	total = 0
 	for _, s := range steps {
 		s, cmd := s.Update(msg)
 		m.steps = append(m.steps, s)
@@ -58,11 +63,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if skip {
 			s.state = Skipped
 		}
+		total += s.duration
 		content.WriteString(s.View())
 		if s.state == Exited1 {
 			skip = true
 		}
 	}
+	content.WriteString(fmt.Sprintf("⏱️  %s", total.Round(time.Millisecond).String()))
 	m.content = content.String()
 	m.viewport.SetContent(m.content)
 	m.viewport, cmd = m.viewport.Update(msg)
@@ -70,12 +77,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		if !m.ready {
-			m.viewport = viewport.New(msg.Width, msg.Height)
+			m.viewport = viewport.New(msg.Width, msg.Height-lipgloss.Height(m.footerView()))
 			m.viewport.SetContent(m.content)
 			m.ready = true
 		} else {
 			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height
+			m.viewport.Height = msg.Height - lipgloss.Height(m.footerView())
 		}
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -86,7 +93,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			steps := m.steps
 			for i := range steps {
 				m.steps[i].state = Pending
+				m.steps[i].duration = 0
 			}
+			total = 0
 			return m, func() tea.Msg { return startMsg{id: 0} }
 		default:
 			return m, nil
@@ -100,8 +109,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m model) footerView() string {
+	style := lipgloss.NewStyle().Background(lipgloss.Color("#bada55"))
+	info := fmt.Sprintf("(r restart, q quit) %3.f%%", m.viewport.ScrollPercent()*100)
+	middle := strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(info)))
+	return style.Render(lipgloss.JoinHorizontal(lipgloss.Center, middle, info))
+}
+
 func (m model) View() string {
-	return m.viewport.View()
+	return fmt.Sprintf("%s\n%s", m.viewport.View(), m.footerView())
 }
 
 func main() {

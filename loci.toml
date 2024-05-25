@@ -1,6 +1,6 @@
 steps = [
-    "sleep 1",
-    "sleep 1",
+    "go mod tidy",
+    "go clean -testcache",
     "go test -v ./...",
     "go build"
 ]
