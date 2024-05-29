@@ -94,10 +94,6 @@ func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	if m.state == Started {
-		m.duration = time.Since(m.startedAt).Round(time.Millisecond)
-	}
-
 	switch msg := msg.(type) {
 	case startMsg:
 		if m.id == msg.id {
@@ -115,6 +111,10 @@ func (m Step) Update(msg tea.Msg) (Step, tea.Cmd) {
 	case spinner.TickMsg:
 		if m.state == Started || m.state == Pending {
 			m.spinner, cmd = m.spinner.Update(msg)
+		}
+
+		if m.state == Started && msg.ID == m.spinner.ID() {
+			m.duration = time.Since(m.startedAt).Round(time.Millisecond)
 		}
 
 		return m, cmd
